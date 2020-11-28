@@ -16,12 +16,12 @@ python setup.py install
 from get_proxy import GetProxy
 
 
-get_proxy = GetProxy(use_tqdm=True, check=True check_duplicates= True, timeout=10, limit=5)
+getproxy = GetProxy(use_tqdm=True, check=True check_duplicates= True, timeout=10, limit=5)
 
 # You can disable checking 
-get_proxy = GetProxy(use_tqdm=True, check=False, check_duplicates= True, timeout=10, limit=5)
+getproxy = GetProxy(use_tqdm=True, check=False, check_duplicates= True, timeout=10, limit=5)
 
-proxy_list = get_proxy.list # Returns ProxyList 
+proxy_list = getproxy.list # Returns ProxyList 
 
  # @params --> country_code: list=None, ssl_support :bool=None, google_passed:bool=None, use_limit :int=0
  # returns list[Proxy]
