@@ -58,7 +58,6 @@ class Proxy:
         return obj
         
     
-
 class ProxyList: 
     _list = None
     _fail_list = None
@@ -136,7 +135,7 @@ class ProxyList:
             return_list = [proxy for proxy in return_list if proxy.ssl_support]
             
         if use_limit:
-            return_list = [proxy for proxy in return_list if proxy.use_limit <= use_limit]
+            return_list = [proxy for proxy in return_list if proxy.use_count < use_limit]
             
         if google_passed:
             return_list = [proxy for proxy in return_list if proxy.google_passed]
@@ -166,7 +165,7 @@ class GetProxy:
     _header = None
     _use_tqdm = True
     get_proxies_method = ["spys"]
-    check_proxies_method = "heroku"
+    check_proxies_method = "ipify"
     save_as_method = "json"
     timeout = 5
     limit = 10000
@@ -176,23 +175,35 @@ class GetProxy:
                 use_tqdm=True,
                 check_duplicates = True,
                 timeout= 5,
-                limit = 10000
+                limit = 10000,
+                check=True,
+                checker="ipify"
                 ):
         """
-        You can set your own proxylist 
+        You can set your own proxylist \n 
+        checker: string --> ipify or heroku 
         """
         self._use_tqdm = use_tqdm
         self._proxy_list = proxy_list()
         self.timeout = 5
         self.limit = limit
         self._header = Headers().generate() 
+        self.check = check
+        self.check_proxies_method = checker
+        
+        
         self.get_proxies()
+        
         
     def check_proxy(self, proxy: Proxy=None) -> bool:
         """
             Checks if proxy active. If you changed your checking method you dont need to override this method 
             you can easily add new is_active method check documentation  
         """
+        
+        if not self.check:
+            return True
+        
         attr_name = f"check_proxy_{self.check_proxies_method}"
         if not hasattr(self, attr_name):
             raise Exception(f"{attr_name} method does not exist")
@@ -208,6 +219,9 @@ class GetProxy:
     
     def check_proxy_heroku(self, proxy_dict) -> str:
         return requests.get("https://check-my-ip.herokuapp.com/", timeout=self.timeout, proxies=proxy_dict).json()["ip"]
+    
+    def check_proxy_ipify(self, proxy_dict) -> str:
+        return requests.get("https://api.ipify.org?format=json", timeout=self.timeout, proxies=proxy_dict).json()["ip"]
    
     def get_proxies(self):
         """
@@ -221,6 +235,7 @@ class GetProxy:
             
             self._last_check_time = datetime.now()
             proxies = getattr(self, proxy_source_attr_name)() # expects list[Proxy] 
+            
             self.check_proxy() # To get ip adress 
             for proxy in tqdm(proxies[:self.limit]):
                 try:
@@ -251,7 +266,15 @@ class GetProxy:
         save_as = getattr(self, attr_name)
         save_as(self._proxy_list.filter(country_code, ssl_support, google_passed, use_limit)) # passing proxyList attribute 
         
-    def save_as_json(self, proxy_list : ProxyList) -> None:
-        dump = json.dumps([obj.obj_dict() for obj in proxy_list.all])
+    def save_as_json(self, proxy_list : List[Proxy] = None) -> None:
+        if not proxy_list:
+            proxy_list = self._proxy_list.all
+        dump = json.dumps([obj.obj_dict() for obj in proxy_list])
         with open("proxy_list.json", "w+") as file:
             file.write(dump)
+
+    @property
+    def ip_address(self):
+        if not self._ip_address:
+            self._ip_address = self.check_proxy()
+        return self._ip_address
